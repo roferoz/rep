@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro de Proveedores</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h1 class="mb-4 text-center">Registro de Proveedores</h1>
+
+    <form id="proveedorForm" class="card p-4 mb-4 shadow-sm">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <input type="text" id="nombre" class="form-control" placeholder="Nombre" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="empresa" class="form-control" placeholder="Empresa" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="marca" class="form-control" placeholder="Marca" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="rubro" class="form-control" placeholder="Rubro" required>
+        </div>
+        <div class="col-md-6">
+          <input type="text" id="nro" class="form-control" placeholder="Número" required>
+        </div>
+        <div class="col-md-6">
+          <input type="email" id="correo" class="form-control" placeholder="Correo" required>
+        </div>
+        <div class="col-12">
+          <textarea id="comentarios" class="form-control" placeholder="Comentarios"></textarea>
+        </div>
+        <div class="col-12 text-center">
+          <button type="submit" class="btn btn-primary">Agregar Proveedor</button>
+          <button type="button" class="btn btn-success" onclick="exportarExcel()">Exportar a Excel</button>
+          <button type="button" id="botonEliminar" class="btn btn-danger d-none mt-2" onclick="confirmarEliminacion()">Eliminar Proveedor</button>
+        </div>
+      </div>
+    </form>
+
+    <h2 class="mb-3">Proveedores Registrados</h2>
+
+    <input type="text" id="filtro" class="form-control mb-3" placeholder="Filtrar proveedores...">
+
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered align-middle" id="tablaProveedores">
+        <thead class="table-dark">
+          <tr>
+            <th>Nombre</th>
+            <th>Empresa</th>
+            <th>Marca</th>
+            <th>Rubro</th>
+            <th>Número</th>
+            <th>Correo</th>
+            <th>Comentarios</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Aquí se agregan los proveedores -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal para mostrar proveedor -->
+  <div class="modal fade" id="modalMostrar" tabindex="-1" aria-labelledby="modalMostrarLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalMostrarLabel">Detalles del Proveedor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p id="detalleProveedor"></p>
+          <canvas id="qrTelefono"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const form = document.getElementById('proveedorForm');
+    const tablaBody = document.querySelector('#tablaProveedores tbody');
+    const filtro = document.getElementById('filtro');
+    const detalleProveedor = document.getElementById('detalleProveedor');
+    const qr = new QRious({ element: document.getElementById('qrTelefono'), size: 200 });
+    const botonEliminar = document.getElementById('botonEliminar');
+
+    let proveedores = JSON.parse(localStorage.getItem('proveedores')) || [];
+    let indiceEditar = null;
+
+    function mostrarProveedores(lista) {
+      tablaBody.innerHTML = '';
+      lista.forEach((proveedor, index) => {
+        const nuevaFila = document.createElement('tr');
+        nuevaFila.innerHTML = `
+          <td>${proveedor.nombre}</td>
+          <td>${proveedor.empresa}</td>
+          <td>${proveedor.marca}</td>
+          <td>${proveedor.rubro}</td>
+          <td>${proveedor.nro}</td>
+          <td>${proveedor.correo}</td>
+          <td>${proveedor.comentarios}</td>
+          <td>
+            <button class="btn btn-sm btn-info me-1" onclick="mostrarProveedor(${index})">Mostrar</button>
+            <button class="btn btn-sm btn-warning" onclick="editarProveedor(${index})">Editar</button>
+          </td>
+        `;
+        tablaBody.appendChild(nuevaFila);
+      });
+    }
+
+    function guardarProveedores() {
+      localStorage.setItem('proveedores', JSON.stringify(proveedores));
+    }
+
+    function confirmarEliminacion() {
+      if (indiceEditar !== null && confirm('¿Seguro que quieres eliminar este proveedor?')) {
+        proveedores.splice(indiceEditar, 1);
+        guardarProveedores();
+        mostrarProveedores(proveedores);
+        form.reset();
+        botonEliminar.classList.add('d-none');
+        indiceEditar = null;
+      }
+    }
+
+    function editarProveedor(index) {
+      const proveedor = proveedores[index];
+      document.getElementById('nombre').value = proveedor.nombre;
+      document.getElementById('empresa').value = proveedor.empresa;
+      document.getElementById('marca').value = proveedor.marca;
+      document.getElementById('rubro').value = proveedor.rubro;
+      document.getElementById('nro').value = proveedor.nro;
+      document.getElementById('correo').value = proveedor.correo;
+      document.getElementById('comentarios').value = proveedor.comentarios;
+
+      indiceEditar = index;
+      botonEliminar.classList.remove('d-none');
+    }
+
+    function mostrarProveedor(index) {
+      const proveedor = proveedores[index];
+      detalleProveedor.innerHTML = `
+        <strong>Nombre:</strong> ${proveedor.nombre}<br>
+        <strong>Empresa:</strong> ${proveedor.empresa}<br>
+        <strong>Marca:</strong> ${proveedor.marca}<br>
+        <strong>Rubro:</strong> ${proveedor.rubro}<br>
+        <strong>Teléfono:</strong> ${proveedor.nro}<br>
+        <strong>Correo:</strong> ${proveedor.correo}<br>
+        <strong>Comentarios:</strong> ${proveedor.comentarios}
+      `;
+      qr.value = proveedor.nro;
+      const modal = new bootstrap.Modal(document.getElementById('modalMostrar'));
+      modal.show();
+    }
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      const nuevoProveedor = {
+        nombre: document.getElementById('nombre').value,
+        empresa: document.getElementById('empresa').value,
+        marca: document.getElementById('marca').value,
+        rubro: document.getElementById('rubro').value,
+        nro: document.getElementById('nro').value,
+        correo: document.getElementById('correo').value,
+        comentarios: document.getElementById('comentarios').value
+      };
+
+      proveedores.push(nuevoProveedor);
+      guardarProveedores();
+      mostrarProveedores(proveedores);
+      form.reset();
+      botonEliminar.classList.add('d-none');
+      indiceEditar = null;
+    });
+
+    filtro.addEventListener('input', function() {
+      const valorFiltro = filtro.value.toLowerCase();
+      const proveedoresFiltrados = proveedores.filter(proveedor => {
+        return Object.values(proveedor).some(valor =>
+          valor.toLowerCase().includes(valorFiltro)
+        );
+      });
+      mostrarProveedores(proveedoresFiltrados);
+    });
+
+    function exportarExcel() {
+      let csv = 'Nombre,Empresa,Marca,Rubro,Número,Correo,Comentarios\n';
+      proveedores.forEach(p => {
+        csv += `${p.nombre},${p.empresa},${p.marca},${p.rubro},${p.nro},${p.correo},${p.comentarios}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'proveedores.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Mostrar proveedores al cargar la página
+    mostrarProveedores(proveedores);
+  </script>
+</body>
+</html>
