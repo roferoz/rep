@@ -5,39 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registro de Proveedores</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <style>
+    #botonEliminar {
+      transition: opacity 0.5s;
+    }
+    #alerta {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1050;
+      display: none;
+    }
+    #proveedorForm, #loginForm {
+      display: none;
+    }
+  </style>
 </head>
 <body class="bg-light">
   <div class="container py-5">
     <h1 class="mb-4 text-center">Registro de Proveedores</h1>
 
+    <div id="alerta" class="alert alert-success" role="alert"></div>
+
+<div id="bienvenida" class="text-center mb-3 fw-bold" style="display: none;"></div>
+
+    <div class="text-center mb-4">
+      <button id="loginBtn" class="btn btn-outline-primary" onclick="mostrarLogin()">Login</button>
+      <button id="logoutBtn" class="btn btn-outline-danger d-none" onclick="logout()">Logout</button>
+      <button id="toggleFormularioBtn" class="btn btn-primary mt-2" onclick="toggleFormulario()">
+        <i class="bi bi-person-plus-fill"></i> Agregar Proveedor
+      </button>
+    </div>
+
+    <form id="loginForm" class="card p-4 mb-4 shadow-sm mx-auto" style="max-width: 400px;">
+      <h4 class="text-center mb-4">Iniciar Sesión</h4>
+      <div class="mb-3">
+        <input type="email" id="loginEmail" class="form-control" placeholder="Correo electrónico" required>
+      </div>
+      <div class="mb-3">
+        <input type="password" id="loginPassword" class="form-control" placeholder="Contraseña" required>
+      </div>
+      <div class="d-flex justify-content-center gap-2">
+        <button type="button" class="btn btn-primary" onclick="login()">Login</button>
+        <button type="button" class="btn btn-secondary" onclick="registrar()">Registrarse</button>
+      </div>
+    </form>
+
     <form id="proveedorForm" class="card p-4 mb-4 shadow-sm">
       <div class="row g-3">
         <div class="col-md-6">
           <input type="text" id="nombre" class="form-control" placeholder="Nombre" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-md-6">
           <input type="text" id="empresa" class="form-control" placeholder="Empresa" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-md-6">
           <input type="text" id="marca" class="form-control" placeholder="Marca" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-md-6">
           <input type="text" id="rubro" class="form-control" placeholder="Rubro" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-md-6">
           <input type="text" id="nro" class="form-control" placeholder="Número" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-md-6">
           <input type="email" id="correo" class="form-control" placeholder="Correo" required>
+          <div class="invalid-feedback">Este campo es obligatorio.</div>
         </div>
         <div class="col-12">
           <textarea id="comentarios" class="form-control" placeholder="Comentarios"></textarea>
         </div>
-        <div class="col-12 text-center">
-          <button type="submit" class="btn btn-primary">Agregar Proveedor</button>
-          <button type="button" class="btn btn-success" onclick="exportarExcel()">Exportar a Excel</button>
-          <button type="button" id="botonEliminar" class="btn btn-danger d-none mt-2" onclick="confirmarEliminacion()">Eliminar Proveedor</button>
+        <div class="col-12 d-flex justify-content-center flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-person-plus-fill"></i> Guardar
+          </button>
+          <button type="button" class="btn btn-secondary" onclick="cancelarEdicion()">
+            <i class="bi bi-x-circle"></i> Cancelar Edición
+          </button>
         </div>
       </div>
     </form>
@@ -61,165 +112,147 @@
           </tr>
         </thead>
         <tbody>
-          <!-- Aquí se agregan los proveedores -->
+          <!-- Proveedores aquí -->
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Modal para mostrar proveedor -->
-  <div class="modal fade" id="modalMostrar" tabindex="-1" aria-labelledby="modalMostrarLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalMostrarLabel">Detalles del Proveedor</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-        </div>
-        <div class="modal-body text-center">
-          <p id="detalleProveedor"></p>
-          <canvas id="qrTelefono"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
   <script>
-    const form = document.getElementById('proveedorForm');
-    const tablaBody = document.querySelector('#tablaProveedores tbody');
-    const filtro = document.getElementById('filtro');
-    const detalleProveedor = document.getElementById('detalleProveedor');
-    const qr = new QRious({ element: document.getElementById('qrTelefono'), size: 200 });
-    const botonEliminar = document.getElementById('botonEliminar');
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_DOMINIO.firebaseapp.com",
+      projectId: "TU_PROJECT_ID",
+      storageBucket: "TU_PROJECT_ID.appspot.com",
+      messagingSenderId: "XXXX",
+      appId: "XXXX"
+    };
 
-    let proveedores = JSON.parse(localStorage.getItem('proveedores')) || [];
-    let indiceEditar = null;
-    let modoEdicion = false;
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let usuarioAutenticado = false;
 
-    function mostrarProveedores(lista) {
-      tablaBody.innerHTML = '';
-      lista.forEach((proveedor, index) => {
-        const nuevaFila = document.createElement('tr');
-        nuevaFila.innerHTML = `
-          <td>${proveedor.nombre}</td>
-          <td>${proveedor.empresa}</td>
-          <td>${proveedor.marca}</td>
-          <td>${proveedor.rubro}</td>
-          <td>${proveedor.nro}</td>
-          <td>${proveedor.correo}</td>
-          <td>${proveedor.comentarios}</td>
-          <td>
-            <button class="btn btn-sm btn-info me-1" onclick="mostrarProveedor(${index})">Mostrar</button>
-            <button class="btn btn-sm btn-warning" onclick="editarProveedor(${index})">Editar</button>
-          </td>
-        `;
-        tablaBody.appendChild(nuevaFila);
-      });
-    }
-
-    function guardarProveedores() {
-      localStorage.setItem('proveedores', JSON.stringify(proveedores));
-    }
-
-    function confirmarEliminacion() {
-      if (indiceEditar !== null && confirm('¿Seguro que quieres eliminar este proveedor?')) {
-        proveedores.splice(indiceEditar, 1);
-        guardarProveedores();
-        mostrarProveedores(proveedores);
-        form.reset();
-        botonEliminar.classList.add('d-none');
-        indiceEditar = null;
-        modoEdicion = false;
-      }
-    }
-
-    function editarProveedor(index) {
-      const proveedor = proveedores[index];
-      document.getElementById('nombre').value = proveedor.nombre;
-      document.getElementById('empresa').value = proveedor.empresa;
-      document.getElementById('marca').value = proveedor.marca;
-      document.getElementById('rubro').value = proveedor.rubro;
-      document.getElementById('nro').value = proveedor.nro;
-      document.getElementById('correo').value = proveedor.correo;
-      document.getElementById('comentarios').value = proveedor.comentarios;
-
-      indiceEditar = index;
-      modoEdicion = true;
-      botonEliminar.classList.remove('d-none');
-    }
-
-    function mostrarProveedor(index) {
-      const proveedor = proveedores[index];
-      detalleProveedor.innerHTML = `
-        <strong>Nombre:</strong> ${proveedor.nombre}<br>
-        <strong>Empresa:</strong> ${proveedor.empresa}<br>
-        <strong>Marca:</strong> ${proveedor.marca}<br>
-        <strong>Rubro:</strong> ${proveedor.rubro}<br>
-        <strong>Teléfono:</strong> ${proveedor.nro}<br>
-        <strong>Correo:</strong> ${proveedor.correo}<br>
-        <strong>Comentarios:</strong> ${proveedor.comentarios}
-      `;
-      qr.value = `tel:${proveedor.nro}`;
-      const modal = new bootstrap.Modal(document.getElementById('modalMostrar'));
-      modal.show();
-    }
-
-    form.addEventListener('submit', function(event) {
-      event.preventDefault();
-
-      const nuevoProveedor = {
-        nombre: document.getElementById('nombre').value,
-        empresa: document.getElementById('empresa').value,
-        marca: document.getElementById('marca').value,
-        rubro: document.getElementById('rubro').value,
-        nro: document.getElementById('nro').value,
-        correo: document.getElementById('correo').value,
-        comentarios: document.getElementById('comentarios').value
-      };
-
-      if (modoEdicion && indiceEditar !== null) {
-        proveedores[indiceEditar] = nuevoProveedor;
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        db.collection("autorizados").doc(user.email).get().then(doc => {
+          if (!doc.exists) {
+            mostrarAlerta('<i class="bi bi-exclamation-triangle-fill"></i> Correo no autorizado.', 'danger');
+            auth.signOut();
+            return;
+          } else {
+            usuarioAutenticado = true;
+            document.getElementById('loginBtn').classList.add('d-none');
+            document.getElementById('logoutBtn').classList.remove('d-none');
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('bienvenida').style.display = 'block';
+            document.getElementById('bienvenida').innerHTML = `👋 Bienvenido, ${user.email}`;
+            cargarProveedores();
+          }
+        });
       } else {
-        proveedores.push(nuevoProveedor);
+        usuarioAutenticado = false;
+        document.getElementById('loginBtn').classList.remove('d-none');
+        document.getElementById('logoutBtn').classList.add('d-none');
+        document.getElementById('bienvenida').style.display = 'none';
+        cargarProveedores();
       }
-
-      guardarProveedores();
-      mostrarProveedores(proveedores);
-      form.reset();
-      botonEliminar.classList.add('d-none');
-      indiceEditar = null;
-      modoEdicion = false;
+    });
     });
 
-    filtro.addEventListener('input', function() {
-      const valorFiltro = filtro.value.toLowerCase();
-      const proveedoresFiltrados = proveedores.filter(proveedor => {
-        return Object.values(proveedor).some(valor =>
-          valor.toLowerCase().includes(valorFiltro)
-        );
-      });
-      mostrarProveedores(proveedoresFiltrados);
-    });
-
-    function exportarExcel() {
-      let csv = 'Nombre,Empresa,Marca,Rubro,Número,Correo,Comentarios\n';
-      proveedores.forEach(p => {
-        csv += `${p.nombre},${p.empresa},${p.marca},${p.rubro},${p.nro},${p.correo},${p.comentarios}\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'proveedores.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    function mostrarLogin() {
+      document.getElementById('loginForm').style.display = 'block';
     }
 
-    mostrarProveedores(proveedores);
+    function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      if (email && password) {
+        auth.signInWithEmailAndPassword(email, password)
+          .then(() => mostrarAlerta('<i class="bi bi-check-circle-fill"></i> Sesión iniciada.', 'success'))
+          .catch(error => mostrarAlerta('<i class="bi bi-exclamation-triangle-fill"></i> ' + error.message, 'danger'));
+      } else {
+        mostrarAlerta('<i class="bi bi-exclamation-triangle-fill"></i> Completa email y contraseña.', 'danger');
+      }
+    }
+
+    function registrar() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      if (email && password) {
+        auth.createUserWithEmailAndPassword(email, password)
+          .then(() => mostrarAlerta('<i class="bi bi-check-circle-fill"></i> Usuario registrado y logueado.', 'success'))
+          .catch(error => mostrarAlerta('<i class="bi bi-exclamation-triangle-fill"></i> ' + error.message, 'danger'));
+      } else {
+        mostrarAlerta('<i class="bi bi-exclamation-triangle-fill"></i> Completa email y contraseña.', 'danger');
+      }
+    }
+
+    function logout() {
+      auth.signOut();
+    }
+
+    function toggleFormulario() {
+      const form = document.getElementById('proveedorForm');
+      const btn = document.getElementById('toggleFormularioBtn');
+      const visible = form.style.display === 'block';
+      form.style.display = visible ? 'none' : 'block';
+      btn.innerHTML = visible
+        ? '<i class="bi bi-person-plus-fill"></i> Agregar Proveedor'
+        : '<i class="bi bi-x-circle"></i> Ocultar Formulario';
+    }
+
+    function ocultarFormulario() {
+      document.getElementById('proveedorForm').reset();
+      document.getElementById('proveedorForm').style.display = 'none';
+      document.getElementById('toggleFormularioBtn').innerHTML = '<i class="bi bi-person-plus-fill"></i> Agregar Proveedor';
+    }
+
+    function cargarProveedores() {
+      const tbody = document.querySelector('#tablaProveedores tbody');
+      tbody.innerHTML = '';
+      db.collection("proveedores").orderBy("timestamp", "desc").get().then(snapshot => {
+        snapshot.forEach(doc => {
+          const p = doc.data();
+          const id = doc.id;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${p.nombre}</td>
+            <td>${p.empresa}</td>
+            <td>${p.marca}</td>
+            <td>${p.rubro}</td>
+            <td>${p.nro}</td>
+            <td>${p.correo}</td>
+            <td>${p.comentarios}</td>
+            <td class="text-center">
+              ${usuarioAutenticado ? `<button class="btn btn-warning btn-sm" onclick="editarProveedor('${id}')">Editar</button> <button class="btn btn-danger btn-sm" onclick="eliminarProveedor('${id}')">Eliminar</button>` : `<i class="bi bi-lock-fill text-muted"></i>`}
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    function eliminarProveedor(id) {
+      if (confirm('¿Seguro que deseas eliminar este proveedor?')) {
+        db.collection("proveedores").doc(id).delete().then(() => {
+          mostrarAlerta('Proveedor eliminado.', 'success');
+          cargarProveedores();
+        });
+      }
+    }
+
+    function mostrarAlerta(mensaje, tipo = 'success') {
+      const alerta = document.getElementById('alerta');
+      alerta.className = `alert alert-${tipo}`;
+      alerta.innerHTML = mensaje;
+      alerta.style.display = 'block';
+      setTimeout(() => alerta.style.display = 'none', 3000);
+    }
   </script>
 </body>
 </html>
-
-
