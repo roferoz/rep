@@ -26,7 +26,6 @@
 
     const loginSection = document.getElementById('login-section');
     const mainSection = document.getElementById('main-content');
-    const form = document.getElementById('formulario');
     const tableBody = document.querySelector('#tabla-registros tbody');
 
     document.getElementById('login-btn').addEventListener('click', async () => {
@@ -42,7 +41,7 @@
     onAuthStateChanged(auth, user => {
       if (user) {
         loginSection.style.display = 'none';
-        mainSection.style.display = 'block';
+        mainSection.style.display = 'flex';
         cargarRegistros();
       } else {
         loginSection.style.display = 'block';
@@ -54,7 +53,7 @@
       const nuevo = {
         marca: document.getElementById('marca').value,
         contacto: document.getElementById('contacto').value,
-        email: document.getElementById('email-prov').value,
+        email: document.getElementById('emailProv').value,
         telefono: document.getElementById('telefono').value,
         detalles: document.getElementById('detalles').value
       };
@@ -64,7 +63,7 @@
       }
       await addDoc(collection(db, 'proveedores'), nuevo);
       cargarRegistros();
-      form.reset();
+      document.getElementById('formulario').reset();
     }
 
     async function cargarRegistros(filtro = null) {
@@ -111,12 +110,19 @@
       font-family: Arial, sans-serif;
       background: #f4f6f9;
       color: #002f6c;
+      margin: 0;
       padding: 20px;
+    }
+    .container {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
     }
     input, button {
       padding: 10px;
-      margin: 5px 0;
+      margin-bottom: 10px;
       border-radius: 5px;
+      width: 100%;
     }
     button {
       border: none;
@@ -124,8 +130,8 @@
     }
     table {
       width: 100%;
-      margin-top: 15px;
       border-collapse: collapse;
+      margin-top: 10px;
       background: white;
     }
     th, td {
@@ -133,8 +139,12 @@
       border: 1px solid #ccc;
     }
     th {
-      background: #002f6c;
+      background-color: #002f6c;
       color: white;
+    }
+    .formulario {
+      width: 300px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -147,21 +157,18 @@
   <button id="login-btn" style="background:#002f6c; color:white;">Ingresar</button>
 </div>
 
-<div id="main-content" style="display:none;">
-  <h2>Registro de Proveedores - COMTEL</h2>
-
-  <input type="text" id="busqueda" placeholder="Buscar por marca">
-  <button onclick="buscarRegistros()">Buscar</button>
-  <button onclick="restablecerBusqueda()">Restablecer</button>
-
-  <form id="formulario" onsubmit="event.preventDefault(); agregarRegistro();">
+<div id="main-content" style="display:none;" class="container">
+  <form id="formulario" class="formulario" onsubmit="event.preventDefault(); agregarRegistro();">
     <h3>Nuevo Registro</h3>
-    <input type="text" id="marca" placeholder="Marca/Proveedor"><br>
-    <input type="text" id="contacto" placeholder="Contacto"><br>
-    <input type="email" id="email-prov" placeholder="Email"><br>
-    <input type="text" id="telefono" placeholder="Teléfono"><br>
-    <input type="text" id="detalles" placeholder="Detalles"><br>
+    <input type="text" id="marca" placeholder="Marca/Proveedor">
+    <input type="text" id="contacto" placeholder="Contacto">
+    <input type="email" id="emailProv" placeholder="Email">
+    <input type="text" id="telefono" placeholder="Teléfono">
+    <input type="text" id="detalles" placeholder="Detalles">
     <button type="submit" style="background:#007acc; color:white;">Agregar</button>
+    <input type="text" id="busqueda" placeholder="Buscar por marca">
+    <button type="button" onclick="buscarRegistros()" style="background:#28a745; color:white;">Buscar</button>
+    <button type="button" onclick="restablecerBusqueda()" style="background:#6c757d; color:white;">Restablecer</button>
   </form>
 
   <table id="tabla-registros">
