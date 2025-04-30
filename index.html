@@ -4,148 +4,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COMTEL - Registro de Proveedores</title>
+  <title>COMTEL - Editar Proveedores</title>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCypch76czlM9HW3Q7u52V8-aaM_hGjrW4",
-      authDomain: "prov-comtel.firebaseapp.com",
-      projectId: "prov-comtel",
-      storageBucket: "prov-comtel.firebasestorage.app",
-      messagingSenderId: "219202150052",
-      appId: "1:219202150052:web:f7272bee5a56b5a1e75031",
-      measurementId: "G-6YE8VRD9E4"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const loginSection = document.getElementById('login-section');
-    const mainSection = document.getElementById('main-content');
-    const tableBody = document.querySelector('#tabla-registros tbody');
-
-    document.getElementById('login-btn').addEventListener('click', async () => {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (error) {
-        alert('Login incorrecto');
-      }
-    });
-
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        loginSection.style.display = 'none';
-        mainSection.style.display = 'flex';
-        cargarRegistros();
-      } else {
-        loginSection.style.display = 'block';
-        mainSection.style.display = 'none';
-      }
-    });
-
-    async function agregarRegistro() {
-      const nuevo = {
-        marca: document.getElementById('marca').value,
-        contacto: document.getElementById('contacto').value,
-        email: document.getElementById('emailProv').value,
-        telefono: document.getElementById('telefono').value,
-        detalles: document.getElementById('detalles').value
+    document.addEventListener('DOMContentLoaded', () => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCypch76czlM9HW3Q7u52V8-aaM_hGjrW4",
+        authDomain: "prov-comtel.firebaseapp.com",
+        projectId: "prov-comtel",
+        storageBucket: "prov-comtel.firebasestorage.app",
+        messagingSenderId: "219202150052",
+        appId: "1:219202150052:web:f7272bee5a56b5a1e75031"
       };
-      if (!nuevo.marca || !nuevo.contacto || !nuevo.email || !nuevo.telefono) {
-        alert('Complete todos los campos');
-        return;
-      }
-      await addDoc(collection(db, 'proveedores'), nuevo);
-      cargarRegistros();
-      document.getElementById('formulario').reset();
-    }
 
-    async function cargarRegistros(filtro = null) {
-      tableBody.innerHTML = '';
-      const ref = collection(db, 'proveedores');
-      const q = filtro ? query(ref, where("marca", ">=", filtro), where("marca", "<=", filtro + "\uf8ff")) : ref;
-      const snapshot = await getDocs(q);
-      snapshot.forEach(docSnap => {
-        const r = docSnap.data();
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${r.marca}</td>
-          <td>${r.contacto}</td>
-          <td>${r.email}</td>
-          <td>${r.telefono}</td>
-          <td>${r.detalles}</td>
-          <td><button onclick="eliminarRegistro('${docSnap.id}')">Eliminar</button></td>
-        `;
-        tableBody.appendChild(tr);
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const loginSection = document.getElementById('login-section');
+      const mainSection = document.getElementById('main-content');
+      const tableBody = document.querySelector('#tabla-registros tbody');
+      const formContainer = document.getElementById('form-container');
+      const modal = document.getElementById('edit-modal');
+
+      let editId = null;
+
+      document.getElementById('login-btn').addEventListener('click', async () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+          alert('Login incorrecto');
+        }
       });
-    }
 
-    window.eliminarRegistro = async function (id) {
-      if (confirm('¿Eliminar registro?')) {
-        await deleteDoc(doc(db, 'proveedores', id));
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          loginSection.style.display = 'none';
+          mainSection.style.display = 'block';
+          cargarRegistros();
+        } else {
+          loginSection.style.display = 'block';
+          mainSection.style.display = 'none';
+        }
+      });
+
+      async function agregarRegistro() {
+        const nuevo = {
+          marca: document.getElementById('marca').value,
+          contacto: document.getElementById('contacto').value,
+          email: document.getElementById('emailProv').value,
+          telefono: document.getElementById('telefono').value,
+          detalles: document.getElementById('detalles').value
+        };
+        if (!nuevo.marca || !nuevo.contacto || !nuevo.email || !nuevo.telefono) {
+          alert('Complete todos los campos');
+          return;
+        }
+        await addDoc(collection(db, 'proveedores'), nuevo);
+        cargarRegistros();
+        document.getElementById('formulario').reset();
+        formContainer.style.display = 'none';
+      }
+
+      async function cargarRegistros(filtro = null) {
+        tableBody.innerHTML = '';
+        const ref = collection(db, 'proveedores');
+        const q = filtro ? query(ref, where("marca", ">=", filtro), where("marca", "<=", filtro + "\uf8ff")) : ref;
+        const snapshot = await getDocs(q);
+        snapshot.forEach(docSnap => {
+          const r = docSnap.data();
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${r.marca}</td>
+            <td>${r.contacto}</td>
+            <td>${r.email}</td>
+            <td>${r.telefono}</td>
+            <td>${r.detalles}</td>
+            <td>
+              <button onclick="editarRegistro('${docSnap.id}', '${r.marca}', '${r.contacto}', '${r.email}', '${r.telefono}', '${r.detalles}')">Editar</button>
+            </td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      }
+
+      window.editarRegistro = function (id, marca, contacto, email, telefono, detalles) {
+        editId = id;
+        document.getElementById('edit-marca').value = marca;
+        document.getElementById('edit-contacto').value = contacto;
+        document.getElementById('edit-email').value = email;
+        document.getElementById('edit-telefono').value = telefono;
+        document.getElementById('edit-detalles').value = detalles;
+        modal.style.display = 'flex';
+      }
+
+      window.cerrarModal = function () {
+        modal.style.display = 'none';
+        editId = null;
+      }
+
+      window.guardarCambios = async function () {
+        if (!editId) return;
+        const docRef = doc(db, 'proveedores', editId);
+        await updateDoc(docRef, {
+          marca: document.getElementById('edit-marca').value,
+          contacto: document.getElementById('edit-contacto').value,
+          email: document.getElementById('edit-email').value,
+          telefono: document.getElementById('edit-telefono').value,
+          detalles: document.getElementById('edit-detalles').value
+        });
+        cerrarModal();
         cargarRegistros();
       }
-    }
 
-    window.buscarRegistros = function () {
-      const texto = document.getElementById('busqueda').value.trim();
-      cargarRegistros(texto);
-    }
+      window.eliminarRegistro = async function () {
+        if (editId && confirm('¿Eliminar este registro?')) {
+          await deleteDoc(doc(db, 'proveedores', editId));
+          cerrarModal();
+          cargarRegistros();
+        }
+      }
 
-    window.restablecerBusqueda = function () {
-      document.getElementById('busqueda').value = '';
-      cargarRegistros();
-    }
+      window.buscarRegistros = function () {
+        const texto = document.getElementById('busqueda').value.trim();
+        cargarRegistros(texto);
+      }
 
-    window.agregarRegistro = agregarRegistro;
+      window.restablecerBusqueda = function () {
+        document.getElementById('busqueda').value = '';
+        cargarRegistros();
+      }
+
+      window.agregarRegistro = agregarRegistro;
+      window.toggleForm = () => {
+        formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+      };
+    });
   </script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f6f9;
-      color: #002f6c;
-      margin: 0;
-      padding: 20px;
-    }
-    .container {
-      display: flex;
-      gap: 40px;
-      align-items: flex-start;
-    }
-    input, button {
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 5px;
-      width: 100%;
-    }
-    button {
-      border: none;
-      cursor: pointer;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      background: white;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #ccc;
-    }
-    th {
-      background-color: #002f6c;
-      color: white;
-    }
-    .formulario {
-      width: 300px;
-      flex-shrink: 0;
-    }
+    body { font-family: Arial; background: #f4f6f9; padding: 20px; color: #002f6c; }
+    input, button { padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+    table { width: 100%; border-collapse: collapse; background: white; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 10px; }
+    th { background: #002f6c; color: white; }
+    #form-container, #edit-modal .modal-content { background: white; padding: 15px; border-radius: 10px; max-width: 400px; }
+    #edit-modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 999; }
+    .modal-content button { margin-right: 5px; }
   </style>
 </head>
 <body>
@@ -157,19 +166,23 @@
   <button id="login-btn" style="background:#002f6c; color:white;">Ingresar</button>
 </div>
 
-<div id="main-content" style="display:none;" class="container">
-  <form id="formulario" class="formulario" onsubmit="event.preventDefault(); agregarRegistro();">
-    <h3>Nuevo Registro</h3>
-    <input type="text" id="marca" placeholder="Marca/Proveedor">
-    <input type="text" id="contacto" placeholder="Contacto">
-    <input type="email" id="emailProv" placeholder="Email">
-    <input type="text" id="telefono" placeholder="Teléfono">
-    <input type="text" id="detalles" placeholder="Detalles">
-    <button type="submit" style="background:#007acc; color:white;">Agregar</button>
-    <input type="text" id="busqueda" placeholder="Buscar por marca">
-    <button type="button" onclick="buscarRegistros()" style="background:#28a745; color:white;">Buscar</button>
-    <button type="button" onclick="restablecerBusqueda()" style="background:#6c757d; color:white;">Restablecer</button>
-  </form>
+<div id="main-content" style="display:none;">
+  <button onclick="toggleForm()" style="background:#007acc; color:white;">Nuevo Registro</button>
+  <input type="text" id="busqueda" placeholder="Buscar por marca">
+  <button onclick="buscarRegistros()" style="background:#28a745; color:white;">Buscar</button>
+  <button onclick="restablecerBusqueda()" style="background:#6c757d; color:white;">Restablecer</button>
+
+  <div id="form-container" style="display:none;">
+    <form id="formulario" onsubmit="event.preventDefault(); agregarRegistro();">
+      <input type="text" id="marca" placeholder="Marca/Proveedor">
+      <input type="text" id="contacto" placeholder="Contacto">
+      <input type="email" id="emailProv" placeholder="Email">
+      <input type="text" id="telefono" placeholder="Teléfono">
+      <input type="text" id="detalles" placeholder="Detalles">
+      <button type="submit" style="background:#28a745; color:white;">Agregar</button>
+      <button type="button" onclick="toggleForm()" style="background:#dc3545; color:white;">Cancelar</button>
+    </form>
+  </div>
 
   <table id="tabla-registros">
     <thead>
@@ -184,6 +197,23 @@
     </thead>
     <tbody></tbody>
   </table>
+</div>
+
+<!-- Modal editar -->
+<div id="edit-modal" class="modal">
+  <div class="modal-content">
+    <h3>Editar Registro</h3>
+    <input type="text" id="edit-marca" placeholder="Marca">
+    <input type="text" id="edit-contacto" placeholder="Contacto">
+    <input type="email" id="edit-email" placeholder="Email">
+    <input type="text" id="edit-telefono" placeholder="Teléfono">
+    <input type="text" id="edit-detalles" placeholder="Detalles">
+    <div>
+      <button onclick="guardarCambios()" style="background:#007acc; color:white;">Guardar</button>
+      <button onclick="eliminarRegistro()" style="background:#dc3545; color:white;">Eliminar</button>
+      <button onclick="cerrarModal()">Cancelar</button>
+    </div>
+  </div>
 </div>
 
 </body>
